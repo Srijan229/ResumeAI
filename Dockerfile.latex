@@ -1,0 +1,3 @@
+FROM texlive/texlive:latest
+WORKDIR /work
+CMD ["latexmk", "-pdf", "-interaction=nonstopmode", "-halt-on-error", "resume.tex"]

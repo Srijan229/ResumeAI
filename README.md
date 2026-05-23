@@ -1,36 +1,159 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# ApplyPilot AI
 
-## Getting Started
+ApplyPilot AI is a local-first AI job research and LaTeX resume tailoring assistant. It helps a signed-in user research public job information, analyze fit, tailor editable LaTeX resume blocks, compile a PDF locally with Docker, and optionally generate a cover letter.
 
-First, run the development server:
+It is not an auto-apply bot. It does not log in to LinkedIn, Handshake, or any job platform, and it does not submit applications.
+
+## Features
+
+- Google login with Auth.js / NextAuth.
+- SQLite persistence through Prisma.
+- Per-user Gemini API key storage encrypted with AES-256-GCM.
+- Server-side Gemini calls only; stored keys are never returned to the browser.
+- Resume upload by pasted LaTeX.
+- Marker-based resume tailoring that only changes approved editable blocks.
+- Job creation from pasted job description, public job link, or role query.
+- Job analysis, company notes, match score, missing skills, and resume strategy.
+- Structured resume change summaries.
+- Docker-based `latexmk` PDF compilation.
+- One-page PDF check with one automatic marker-only shortening attempt.
+- Optional cover letter generation.
+
+## Architecture
+
+- `src/app`: App Router pages and API routes.
+- `src/components`: Client forms and workflow controls.
+- `src/lib/auth.ts`: NextAuth options and protected session helpers.
+- `src/lib/crypto.ts`: AES-256-GCM encryption helpers.
+- `src/lib/gemini.ts`: Gemini analysis, tailoring, shortening, and cover letter service.
+- `src/lib/resume-markers.ts`: Marker extraction, marker-only patching, and template preservation validation.
+- `src/lib/latex.ts`: Local Docker LaTeX compiler.
+- `prisma/schema.prisma`: Auth.js models plus app data models.
+
+## Environment Variables
+
+Copy `.env.example` to `.env`:
+
+```bash
+cp .env.example .env
+```
+
+Required values:
+
+```bash
+DATABASE_URL="file:./dev.db"
+NEXTAUTH_URL="http://localhost:3000"
+NEXTAUTH_SECRET=""
+GOOGLE_CLIENT_ID=""
+GOOGLE_CLIENT_SECRET=""
+ENCRYPTION_KEY=""
+GEMINI_MODEL="gemini-2.5-flash"
+```
+
+Generate secrets:
+
+```bash
+openssl rand -base64 32 # NEXTAUTH_SECRET
+openssl rand -base64 32 # ENCRYPTION_KEY
+```
+
+`ENCRYPTION_KEY` must be 32 bytes encoded as base64, or 64 hex characters. Do not commit `.env`.
+
+`GEMINI_MODEL` is optional. The default is `gemini-2.5-flash`, which Google lists as a stable Gemini API model with `generateContent` support. If your API key has access to a different model, set it here and restart the dev server.
+
+## Google OAuth Setup
+
+1. Create a Google Cloud OAuth client.
+2. Add this authorized redirect URI:
+
+```text
+http://localhost:3000/api/auth/callback/google
+```
+
+3. Put the client id and secret into `.env`.
+
+## Gemini API Key Behavior
+
+Each user saves their own Gemini API key on the Settings page. The app encrypts the key before storing it and only displays a masked value such as `AIza************abcd`. AI calls decrypt the key server-side for the current request. The full key is never sent back to the frontend and should never be logged.
+
+## Running Locally
+
+Install dependencies:
+
+```bash
+npm install
+```
+
+Create the database and Prisma client:
+
+```bash
+npm run db:init
+```
+
+You can also use `npm run db:push` on machines where Prisma's schema engine runs normally.
+
+Run the app:
 
 ```bash
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Open `http://localhost:3000`.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## LaTeX Compile Requirements
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+PDF compilation uses Docker locally:
 
-## Learn More
+```bash
+docker run --rm -v <tempDir>:/work -w /work texlive/texlive latexmk -pdf -interaction=nonstopmode -halt-on-error resume.tex
+```
 
-To learn more about Next.js, take a look at the following resources:
+The first `texlive/texlive` pull is large. A matching `Dockerfile.latex` is included if you want to build a pinned local compiler image later.
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## Docker Compose
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+A simple `docker-compose.yml` is included for local development. The app container mounts the Docker socket and includes the Docker CLI so it can invoke the LaTeX compiler image. Running directly with `npm run dev` is simpler for most local usage.
 
-## Deploy on Vercel
+```bash
+docker compose up
+```
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+## Resume Markers
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+Only content inside approved markers can be changed:
+
+```latex
+% === SUMMARY_START ===
+...
+% === SUMMARY_END ===
+
+% === PROJECT_FIXROUTE_START ===
+...
+% === PROJECT_FIXROUTE_END ===
+```
+
+The app validates that document class, packages, margins, fonts, custom commands, spacing, education, dates, links, and section order stay outside Gemini edits.
+
+## Security Notes
+
+- All protected pages require login.
+- API routes check authentication and per-user ownership.
+- Gemini API keys are encrypted with AES-256-GCM.
+- Stored keys are not returned to the frontend.
+- The app only fetches public URLs and never authenticates to job platforms.
+- Resume tailoring prompts explicitly prohibit invented experience.
+
+## Limitations
+
+- Public job pages that block automated access may need pasted job descriptions.
+- Local PDF compilation requires Docker.
+- Vercel deployment can host the web app, but Docker-based LaTeX compilation usually needs a separate service.
+- Gemini quality depends on the user’s key, model availability, and the factual completeness of the resume and job text.
+
+## Roadmap
+
+- Richer resume version comparison.
+- Safer PDF page counting with `pdfinfo` when available.
+- Optional separate LaTeX compiler service.
+- Export job analysis and change summaries.
+- More resume marker templates.
