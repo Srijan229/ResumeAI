@@ -65,37 +65,26 @@ export async function compileLatexToPdf(userId: string, latex: string): Promise<
 }
 
 async function runLatexCompiler(tempDir: string) {
+  const preference = process.env.LATEX_COMPILER ?? "auto";
+
+  if (preference === "local") {
+    return runLocalLatex(tempDir);
+  }
+
+  if (preference === "docker") {
+    return runDockerLatex(tempDir);
+  }
+
   let dockerError: unknown = null;
 
   try {
-    return await execFileAsync(
-      "docker",
-      [
-        "run",
-        "--rm",
-        "-v",
-        `${tempDir}:/work`,
-        "-w",
-        "/work",
-        "texlive/texlive",
-        "latexmk",
-        "-pdf",
-        "-interaction=nonstopmode",
-        "-halt-on-error",
-        "resume.tex",
-      ],
-      { timeout: 180_000, maxBuffer: 4_000_000 },
-    );
+    return await runDockerLatex(tempDir);
   } catch (error) {
     dockerError = error;
   }
 
   try {
-    return await execFileAsync(
-      "latexmk",
-      ["-pdf", "-interaction=nonstopmode", "-halt-on-error", "resume.tex"],
-      { cwd: tempDir, timeout: 60_000, maxBuffer: 2_000_000 },
-    );
+    return await runLocalLatex(tempDir);
   } catch (error) {
     if (isCommandMissing(error)) {
       if (dockerError && !isCommandMissing(dockerError)) {
@@ -109,6 +98,35 @@ async function runLatexCompiler(tempDir: string) {
 
     throw error;
   }
+}
+
+function runDockerLatex(tempDir: string) {
+  return execFileAsync(
+    "docker",
+    [
+      "run",
+      "--rm",
+      "-v",
+      `${tempDir}:/work`,
+      "-w",
+      "/work",
+      "texlive/texlive",
+      "latexmk",
+      "-pdf",
+      "-interaction=nonstopmode",
+      "-halt-on-error",
+      "resume.tex",
+    ],
+    { timeout: 180_000, maxBuffer: 4_000_000 },
+  );
+}
+
+function runLocalLatex(tempDir: string) {
+  return execFileAsync(
+    "latexmk",
+    ["-pdf", "-interaction=nonstopmode", "-halt-on-error", "resume.tex"],
+    { cwd: tempDir, timeout: 60_000, maxBuffer: 2_000_000 },
+  );
 }
 
 function isCommandMissing(error: unknown) {

@@ -1,13 +1,13 @@
 # ApplyPilot AI
 
-ApplyPilot AI is a local-first AI job research and LaTeX resume tailoring assistant. It helps a signed-in user research public job information, analyze fit, tailor editable LaTeX resume blocks, compile a PDF locally with Docker, and optionally generate a cover letter.
+ApplyPilot AI is an AI job research and LaTeX resume tailoring assistant. It helps a signed-in user research public job information, analyze fit, tailor editable LaTeX resume blocks, compile a PDF, and optionally generate a cover letter.
 
 It is not an auto-apply bot. It does not log in to LinkedIn, Handshake, or any job platform, and it does not submit applications.
 
 ## Features
 
 - Google login with Auth.js / NextAuth.
-- SQLite persistence through Prisma.
+- Postgres persistence through Prisma.
 - Per-user Gemini API key storage encrypted with AES-256-GCM.
 - Server-side Gemini calls only; stored keys are never returned to the browser.
 - Resume upload by pasted LaTeX.
@@ -15,7 +15,7 @@ It is not an auto-apply bot. It does not log in to LinkedIn, Handshake, or any j
 - Job creation from pasted job description, public job link, or role query.
 - Job analysis, company notes, match score, missing skills, and resume strategy.
 - Structured resume change summaries.
-- Docker-based `latexmk` PDF compilation.
+- Local `latexmk` PDF compilation in deployment, with optional Docker fallback in development.
 - One-page PDF check with one automatic marker-only shortening attempt.
 - Optional cover letter generation.
 
@@ -27,7 +27,7 @@ It is not an auto-apply bot. It does not log in to LinkedIn, Handshake, or any j
 - `src/lib/crypto.ts`: AES-256-GCM encryption helpers.
 - `src/lib/gemini.ts`: Gemini analysis, tailoring, shortening, and cover letter service.
 - `src/lib/resume-markers.ts`: Marker extraction, marker-only patching, and template preservation validation.
-- `src/lib/latex.ts`: Local Docker LaTeX compiler.
+- `src/lib/latex.ts`: LaTeX compiler wrapper for local `latexmk` or Docker.
 - `prisma/schema.prisma`: Auth.js models plus app data models.
 
 ## Environment Variables
@@ -41,13 +41,14 @@ cp .env.example .env
 Required values:
 
 ```bash
-DATABASE_URL="file:./dev.db"
+DATABASE_URL="postgresql://USER:PASSWORD@HOST/applypilot?sslmode=require"
 NEXTAUTH_URL="http://localhost:3000"
 NEXTAUTH_SECRET=""
 GOOGLE_CLIENT_ID=""
 GOOGLE_CLIENT_SECRET=""
 ENCRYPTION_KEY=""
 GEMINI_MODEL="gemini-2.5-flash"
+LATEX_COMPILER="local"
 ```
 
 Generate secrets:
@@ -84,13 +85,11 @@ Install dependencies:
 npm install
 ```
 
-Create the database and Prisma client:
+Create the database schema and Prisma client:
 
 ```bash
 npm run db:init
 ```
-
-You can also use `npm run db:push` on machines where Prisma's schema engine runs normally.
 
 Run the app:
 
@@ -102,17 +101,19 @@ Open `http://localhost:3000`.
 
 ## LaTeX Compile Requirements
 
-PDF compilation uses Docker locally:
+For deployed containers, `LATEX_COMPILER=local` uses the `latexmk` installed in the image.
+
+For local development you can either install TeX Live/latexmk locally or use Docker:
 
 ```bash
 docker run --rm -v <tempDir>:/work -w /work texlive/texlive latexmk -pdf -interaction=nonstopmode -halt-on-error resume.tex
 ```
 
-The first `texlive/texlive` pull is large. A matching `Dockerfile.latex` is included if you want to build a pinned local compiler image later.
+The first `texlive/texlive` pull is large. Set `LATEX_COMPILER=docker` to force Docker, `LATEX_COMPILER=local` to force local `latexmk`, or leave it as `auto`.
 
 ## Docker Compose
 
-A simple `docker-compose.yml` is included for local development. The app container mounts the Docker socket and includes the Docker CLI so it can invoke the LaTeX compiler image. Running directly with `npm run dev` is simpler for most local usage.
+A simple `docker-compose.yml` is included for local development. Running directly with `npm run dev` is simpler for most local usage.
 
 ```bash
 docker compose up
@@ -146,9 +147,37 @@ The app validates that document class, packages, margins, fonts, custom commands
 ## Limitations
 
 - Public job pages that block automated access may need pasted job descriptions.
-- Local PDF compilation requires Docker.
-- Vercel deployment can host the web app, but Docker-based LaTeX compilation usually needs a separate service.
+- PDF compilation requires either local `latexmk` or Docker.
+- Generated PDFs are stored on the app filesystem. On free hosts, files may disappear after redeploys or restarts, so download PDFs after compiling.
 - Gemini quality depends on the user’s key, model availability, and the factual completeness of the resume and job text.
+
+## Free Deployment: Koyeb + Neon
+
+The recommended free deployment path is Koyeb Free Instance for the Dockerized app and Neon Free Postgres for persistent data.
+
+1. Create a Neon Postgres database and copy the connection string.
+2. In Koyeb, create a Web Service from this GitHub repo and choose Dockerfile deployment.
+3. Add environment variables:
+
+```bash
+DATABASE_URL="postgresql://USER:PASSWORD@HOST/applypilot?sslmode=require"
+NEXTAUTH_URL="https://your-koyeb-app.koyeb.app"
+NEXTAUTH_SECRET=""
+GOOGLE_CLIENT_ID=""
+GOOGLE_CLIENT_SECRET=""
+ENCRYPTION_KEY=""
+GEMINI_MODEL="gemini-2.5-flash"
+LATEX_COMPILER="local"
+```
+
+4. In Google Cloud OAuth, add:
+
+```text
+https://your-koyeb-app.koyeb.app
+https://your-koyeb-app.koyeb.app/api/auth/callback/google
+```
+
+5. Deploy. The container installs TeX packages, runs `prisma db push`, starts Next.js, and compiles PDFs with local `latexmk`.
 
 ## Roadmap
 
