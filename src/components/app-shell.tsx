@@ -16,11 +16,11 @@ export function AppShell({
   return (
     <div className="min-h-screen bg-neutral-50 text-neutral-950">
       <header className="border-b border-neutral-200 bg-white">
-        <div className="mx-auto flex max-w-6xl items-center justify-between px-4 py-3">
-          <Link href="/dashboard" className="font-semibold tracking-tight">
+        <div className="mx-auto flex max-w-6xl flex-col gap-3 px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
+          <Link href="/dashboard" className="shrink-0 font-semibold tracking-tight">
             ApplyPilot AI
           </Link>
-          <nav className="flex items-center gap-1">
+          <nav className="flex min-w-0 flex-wrap items-center gap-1">
             {nav.map((item) => (
               <Link
                 key={item.href}
@@ -36,7 +36,7 @@ export function AppShell({
           </nav>
         </div>
       </header>
-      <main className="mx-auto max-w-6xl px-4 py-6">{children}</main>
+      <main className="mx-auto w-full max-w-6xl px-4 py-6">{children}</main>
     </div>
   );
 }

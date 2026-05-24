@@ -46,12 +46,12 @@ export function SettingsKeyForm() {
   }
 
   return (
-    <section className="rounded-lg border border-neutral-200 bg-white p-5">
+    <section className="min-w-0 rounded-lg border border-neutral-200 bg-white p-5">
       <div className="mb-4 flex items-center gap-2">
         <KeyRound size={18} />
         <h2 className="text-lg font-semibold">Gemini API key</h2>
       </div>
-      <div className="mb-4 rounded-md bg-neutral-50 p-3 text-sm text-neutral-700">
+      <div className="mb-4 break-words rounded-md bg-neutral-50 p-3 text-sm text-neutral-700">
         Current status: {masked ? <span className="font-mono">{masked}</span> : "No key saved"}
       </div>
       <div className="flex flex-col gap-3 sm:flex-row">
@@ -60,7 +60,7 @@ export function SettingsKeyForm() {
           onChange={(event) => setApiKey(event.target.value)}
           type="password"
           placeholder="Paste Gemini API key"
-          className="min-h-10 flex-1 rounded-md border border-neutral-300 px-3 text-sm outline-none focus:border-neutral-950"
+          className="min-h-10 min-w-0 flex-1 rounded-md border border-neutral-300 px-3 text-sm outline-none focus:border-neutral-950"
         />
         <button onClick={save} className="rounded-md bg-neutral-950 px-4 py-2 text-sm font-medium text-white">
           Save key
@@ -73,7 +73,7 @@ export function SettingsKeyForm() {
           Delete
         </button>
       </div>
-      {message ? <p className="mt-3 text-sm text-neutral-700">{message}</p> : null}
+      {message ? <p className="mt-3 break-words text-sm text-neutral-700">{message}</p> : null}
     </section>
   );
 }

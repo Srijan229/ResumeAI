@@ -32,28 +32,28 @@ export function ResumeForm() {
   }
 
   return (
-    <section className="rounded-lg border border-neutral-200 bg-white p-5">
+    <section className="min-w-0 rounded-lg border border-neutral-200 bg-white p-5">
       <h2 className="mb-4 text-lg font-semibold">Paste LaTeX resume</h2>
       <input
         value={name}
         onChange={(event) => setName(event.target.value)}
         placeholder="Resume name"
-        className="mb-3 min-h-10 w-full rounded-md border border-neutral-300 px-3 text-sm outline-none focus:border-neutral-950"
+        className="mb-3 min-h-10 w-full min-w-0 rounded-md border border-neutral-300 px-3 text-sm outline-none focus:border-neutral-950"
       />
       <textarea
         value={latex}
         onChange={(event) => setLatex(event.target.value)}
         placeholder="% === SUMMARY_START ==="
-        className="min-h-80 w-full rounded-md border border-neutral-300 p-3 font-mono text-xs outline-none focus:border-neutral-950"
+        className="min-h-80 w-full min-w-0 rounded-md border border-neutral-300 p-3 font-mono text-xs outline-none focus:border-neutral-950"
       />
-      <div className="mt-3 flex items-center justify-between">
+      <div className="mt-3 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <p className="text-sm text-neutral-600">Editable content must be wrapped in marker blocks.</p>
-        <button onClick={submit} className="inline-flex items-center gap-2 rounded-md bg-neutral-950 px-4 py-2 text-sm font-medium text-white">
+        <button onClick={submit} className="inline-flex min-h-10 items-center justify-center gap-2 rounded-md bg-neutral-950 px-4 py-2 text-sm font-medium text-white">
           <Save size={16} />
           Save resume
         </button>
       </div>
-      {error ? <p className="mt-3 text-sm text-neutral-700">{error}</p> : null}
+      {error ? <p className="mt-3 break-words text-sm text-neutral-700">{error}</p> : null}
     </section>
   );
 }

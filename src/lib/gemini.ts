@@ -18,6 +18,12 @@ export type JobAnalysis = {
   weakMatches: string[];
   missingSkills: string[];
   sponsorshipSignals: string[];
+  workAuthorization: {
+    sponsorshipLikelihood: "yes" | "no" | "unknown";
+    clearanceRequired: "yes" | "no" | "unknown";
+    evidence: string[];
+    recommendation: string;
+  };
   resumeStrategy: {
     recommendedProfile: string;
     sectionsToEmphasize: string[];
@@ -60,6 +66,12 @@ const jobAnalysisShape: JobAnalysis = {
   weakMatches: [],
   missingSkills: [],
   sponsorshipSignals: [],
+  workAuthorization: {
+    sponsorshipLikelihood: "unknown",
+    clearanceRequired: "unknown",
+    evidence: [],
+    recommendation: "No clear work authorization or clearance signal found in the job text.",
+  },
   resumeStrategy: {
     recommendedProfile: "AI/ML | Backend | Full Stack | Cloud",
     sectionsToEmphasize: [],
@@ -114,6 +126,9 @@ Rules:
 - Use only the supplied job content and optional public company notes.
 - If data is missing, use empty strings or arrays.
 - matchScore is 0-100 based on likely resume fit from the supplied content.
+- For workAuthorization.sponsorshipLikelihood, use "yes" only when the job explicitly supports sponsorship, "no" only when it clearly rejects sponsorship or requires unrestricted work authorization, otherwise "unknown".
+- For workAuthorization.clearanceRequired, use "yes" only when the job explicitly requires clearance/citizenship, "no" only when it clearly says no clearance is required, otherwise "unknown".
+- Put exact short evidence snippets or paraphrases in workAuthorization.evidence.
 
 Optional company context:
 ${JSON.stringify(companyInfo ?? null)}
@@ -187,6 +202,9 @@ Hard rules:
 - Preserve LaTeX commands, bullet style, tense, dates, company names, links, and formatting.
 - Modify only summary text and previous-job bullet text inside existing marker content.
 - Never invent experience or add skills absent from the supplied resume blocks.
+- Make the resume feel maximally aligned with the job by foregrounding exact overlapping technologies, responsibilities, and outcomes already present in the resume.
+- If a job requirement is not supported by the resume, do not fake it; instead emphasize the closest truthful adjacent experience.
+- The output should read like a strong fit, but every claim must be defensible from the supplied resume blocks.
 - Explain every change.
 - Keep the resume one-page friendly and concise.
 

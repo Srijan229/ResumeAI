@@ -19,7 +19,7 @@ export default async function DashboardPage() {
           <h1 className="text-2xl font-semibold tracking-tight">Dashboard</h1>
           <p className="mt-1 text-sm text-neutral-600">Research jobs, tailor LaTeX, compile PDFs, and manually apply.</p>
         </div>
-        <div className="flex gap-2">
+        <div className="flex flex-wrap gap-2">
           <Link className="rounded-md border border-neutral-300 px-4 py-2 text-sm" href="/resumes">
             Add resume
           </Link>
@@ -44,26 +44,26 @@ export default async function DashboardPage() {
         ))}
       </ol>
 
-      <div className="grid gap-5 lg:grid-cols-3">
-        <section className="rounded-lg border border-neutral-200 bg-white p-5">
+      <div className="grid min-w-0 gap-5 lg:grid-cols-3">
+        <section className="min-w-0 rounded-lg border border-neutral-200 bg-white p-5">
           <h2 className="mb-3 font-semibold">Recent resumes</h2>
           <List items={resumes.map((resume) => resume.name)} empty="No resumes yet" />
         </section>
-        <section className="rounded-lg border border-neutral-200 bg-white p-5">
+        <section className="min-w-0 rounded-lg border border-neutral-200 bg-white p-5">
           <h2 className="mb-3 font-semibold">Recent jobs</h2>
           <div className="space-y-2">
             {jobs.length ? jobs.map((job) => (
-              <Link key={job.id} href={`/jobs/${job.id}`} className="block rounded-md border border-neutral-200 p-3 text-sm hover:bg-neutral-50">
+              <Link key={job.id} href={`/jobs/${job.id}`} className="block break-words rounded-md border border-neutral-200 p-3 text-sm hover:bg-neutral-50">
                 {job.jobTitle || job.companyName || "Untitled job"}
               </Link>
             )) : <p className="text-sm text-neutral-500">No jobs yet</p>}
           </div>
         </section>
-        <section className="rounded-lg border border-neutral-200 bg-white p-5">
+        <section className="min-w-0 rounded-lg border border-neutral-200 bg-white p-5">
           <h2 className="mb-3 font-semibold">Resume versions</h2>
           <div className="space-y-2">
             {versions.length ? versions.map((version) => (
-              <Link key={version.id} href={`/resume-versions/${version.id}`} className="block rounded-md border border-neutral-200 p-3 text-sm hover:bg-neutral-50">
+              <Link key={version.id} href={`/resume-versions/${version.id}`} className="block break-words rounded-md border border-neutral-200 p-3 text-sm hover:bg-neutral-50">
                 {version.job.jobTitle || "Tailored resume"}
               </Link>
             )) : <p className="text-sm text-neutral-500">No versions yet</p>}
@@ -79,7 +79,7 @@ function List({ items, empty }: { items: string[]; empty: string }) {
   return (
     <div className="space-y-2">
       {items.map((item) => (
-        <div key={item} className="rounded-md border border-neutral-200 p-3 text-sm">
+        <div key={item} className="break-words rounded-md border border-neutral-200 p-3 text-sm">
           {item}
         </div>
       ))}

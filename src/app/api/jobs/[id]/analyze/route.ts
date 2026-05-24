@@ -12,11 +12,10 @@ export async function POST(_request: Request, { params }: { params: Promise<{ id
   if (!job) return jsonError("Job not found", 404);
 
   try {
-    const firstPass = await analyzeJob(auth.userId, job.jobDescription);
-    const company = firstPass.companyName
-      ? await researchCompany(auth.userId, firstPass.companyName, job.jobDescription, job.jobUrl ?? "")
+    const analysis = await analyzeJob(auth.userId, job.jobDescription);
+    const company = analysis.companyName
+      ? await researchCompany(auth.userId, analysis.companyName, job.jobDescription, job.jobUrl ?? "")
       : null;
-    const analysis = await analyzeJob(auth.userId, job.jobDescription, company ?? undefined);
 
     await prisma.job.update({
       where: { id: job.id },

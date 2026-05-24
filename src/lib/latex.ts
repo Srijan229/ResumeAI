@@ -37,7 +37,38 @@ export async function compileLatexToPdf(userId: string, latex: string): Promise<
   await writeFile(path.join(tempDir, "resume.tex"), latex, "utf8");
 
   try {
-    const { stdout, stderr } = await execFileAsync(
+    const { stdout, stderr } = await runLatexCompiler(tempDir);
+
+    const pdfBuffer = await readFile(path.join(tempDir, "resume.pdf"));
+    await copyFile(path.join(tempDir, "resume.pdf"), outputPath);
+    const pageCount = countPdfPages(pdfBuffer);
+
+    return {
+      success: true,
+      pdfPath: `/generated/${userId}/${outputFile}`,
+      log: `${stdout}\n${stderr}`.trim(),
+      pageCount,
+      warnings: pageCount > 1 ? ["Compiled PDF is more than one page."] : [],
+    };
+  } catch (error) {
+    const message = compileErrorMessage(error);
+    return {
+      success: false,
+      pdfPath: "",
+      log: message,
+      pageCount: 0,
+      warnings: ["LaTeX compile failed. Review the log and editable block changes."],
+    };
+  } finally {
+    await rm(tempDir, { recursive: true, force: true });
+  }
+}
+
+async function runLatexCompiler(tempDir: string) {
+  let dockerError: unknown = null;
+
+  try {
+    return await execFileAsync(
       "docker",
       [
         "run",
@@ -53,32 +84,44 @@ export async function compileLatexToPdf(userId: string, latex: string): Promise<
         "-halt-on-error",
         "resume.tex",
       ],
-      { timeout: 60_000, maxBuffer: 2_000_000 },
+      { timeout: 180_000, maxBuffer: 4_000_000 },
     );
-
-    const pdfBuffer = await readFile(path.join(tempDir, "resume.pdf"));
-    await copyFile(path.join(tempDir, "resume.pdf"), outputPath);
-    const pageCount = countPdfPages(pdfBuffer);
-
-    return {
-      success: true,
-      pdfPath: `/generated/${userId}/${outputFile}`,
-      log: `${stdout}\n${stderr}`.trim(),
-      pageCount,
-      warnings: pageCount > 1 ? ["Compiled PDF is more than one page."] : [],
-    };
   } catch (error) {
-    const message = error instanceof Error ? error.message : "Unknown LaTeX compile error";
-    return {
-      success: false,
-      pdfPath: "",
-      log: message,
-      pageCount: 0,
-      warnings: ["LaTeX compile failed. Review the log and editable block changes."],
-    };
-  } finally {
-    await rm(tempDir, { recursive: true, force: true });
+    dockerError = error;
   }
+
+  try {
+    return await execFileAsync(
+      "latexmk",
+      ["-pdf", "-interaction=nonstopmode", "-halt-on-error", "resume.tex"],
+      { cwd: tempDir, timeout: 60_000, maxBuffer: 2_000_000 },
+    );
+  } catch (error) {
+    if (isCommandMissing(error)) {
+      if (dockerError && !isCommandMissing(dockerError)) {
+        throw dockerError;
+      }
+
+      throw new Error(
+        "No LaTeX compiler is available. Install Docker Desktop so ApplyPilot can run texlive/texlive, or install latexmk/TeX Live locally.",
+      );
+    }
+
+    throw error;
+  }
+}
+
+function isCommandMissing(error: unknown) {
+  return typeof error === "object" && error !== null && "code" in error && error.code === "ENOENT";
+}
+
+function compileErrorMessage(error: unknown) {
+  if (error instanceof Error) {
+    const details = error as Error & { stdout?: string; stderr?: string };
+    return [error.message, details.stdout, details.stderr].filter(Boolean).join("\n").trim();
+  }
+
+  return "Unknown LaTeX compile error";
 }
 
 function countPdfPages(pdf: Buffer) {
